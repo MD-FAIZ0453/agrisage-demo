@@ -11,6 +11,7 @@ import { stripData, renderStrip, renderLegend, tooltipHtml, readingAt, tableHtml
 import { createImpact } from './ui/impact.js';
 import { renderSources } from './ui/sources.js';
 import { voice } from './voice.js';
+import { KnowledgeBase } from './kb/search.js';
 
 const $ = (sel) => document.querySelector(sel);
 const SPEEDS = [1, 5, 20]; // simulated minutes per real second
@@ -56,7 +57,12 @@ const s = () => STR[state.lang];
 
 const farm = new Farm('hot_dry');
 const impact = createImpact($('#panel-impact'), { getLang: () => state.lang });
-const agent = new Agent(farm, { getImpact: () => impact.get() });
+// Farmer Q&A index (tools/build_kb.py): fetched shard by shard, only when asked.
+const knowledge = new KnowledgeBase((path) => fetch(`data/kb/${path}`).then((r) => {
+  if (!r.ok) throw new Error(`knowledge index: ${path} ${r.status}`);
+  return r.json();
+}));
+const agent = new Agent(farm, { getImpact: () => impact.get(), knowledge });
 
 const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
@@ -114,6 +120,7 @@ function addBot(resp) {
         }</div>`
       : '';
   el.innerHTML = `<span class="avatar">${icon('sprout')}</span><div class="bubble">${md(resp.text)}${meta}</div>`;
+  if (resp.records?.length) el.querySelector('.bubble').append(recordCards(resp.records, resp.lang));
   if (resp.actions?.length) {
     const box = document.createElement('div');
     box.className = 'msg-actions';
@@ -144,6 +151,48 @@ function addBot(resp) {
   log.append(el);
   scrollChat();
   if (state.tts) voice.speak(resp.text, resp.lang);
+}
+
+// Dataset records are untrusted text: built with textContent only.
+function recordCards(records, lang) {
+  const t = STR[lang] || s();
+  const wrap = document.createElement('div');
+  wrap.className = 'records';
+  for (const r of records) {
+    const card = document.createElement('article');
+    card.className = 'record';
+    const q = document.createElement('p');
+    q.className = 'rec-q';
+    const k = document.createElement('span');
+    k.className = 'rec-k';
+    k.textContent = t.recQ;
+    q.append(k, document.createTextNode(r.q));
+    const a = document.createElement('p');
+    a.className = 'rec-a';
+    const tag = '[dose: ask your agriculture officer or KVK]';
+    r.a.split(tag).forEach((part, i, arr) => {
+      a.append(document.createTextNode(part));
+      if (i < arr.length - 1) {
+        const d = document.createElement('span');
+        d.className = 'dose';
+        d.textContent = t.doseRemoved;
+        a.append(d);
+      }
+    });
+    const src = document.createElement('p');
+    src.className = 'rec-src';
+    const where = [r.source.label, r.place, r.month].filter(Boolean).join(' · ');
+    src.append(document.createTextNode(`${where} · `));
+    const link = document.createElement('a');
+    link.href = r.source.url;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = `${r.source.name}, ${r.source.license}`;
+    src.append(link);
+    card.append(q, a, src);
+    wrap.append(card);
+  }
+  return wrap;
 }
 
 function setEmph(v) {

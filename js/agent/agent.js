@@ -8,6 +8,7 @@ import { INTENTS } from './intents.js';
 import { SOURCES, matchDisease, confidenceLevel } from './kb.js';
 import { clockLabel } from '../farm.js';
 import { P } from '../params.js';
+import { tokenize, toSearchText } from '../kb/search.js';
 
 const f0 = (x) => Math.round(x).toLocaleString('en-IN');
 const f1 = (x) => (Math.round(x * 10) / 10).toFixed(1);
@@ -42,11 +43,18 @@ function whenLabel(tAbs, tNow, lang) {
 const YES = new Set(['yes', 'y', 'ok', 'okay', 'confirm', 'sure', 'go', 'proceed', 'approve', 'sari', 'seri', 'aama', 'aamam', 'haan', 'ஆம்', 'சரி', 'ஓகே', 'ஆமாம்']);
 const NO = new Set(['no', 'nope', 'cancel', 'vendam', 'venda', 'illa', 'வேண்டாம்', 'இல்லை', 'ரத்து']);
 const OFF_WORDS = /\b(off|stop|halt)\b|nirut|niruth|ஆஃப்|நிறுத்|அணை/i;
+const FARM_CROP = 'tomato';
+const OTHER_CROPS = new Set(['chilli', 'rice', 'brinjal', 'okra', 'onion', 'potato', 'banana', 'coconut', 'groundnut', 'cotton', 'sugarcane', 'corn', 'wheat', 'turmeric', 'mango', 'cabbage', 'cauliflower', 'cucumber', 'gourd', 'pumpkin', 'bean', 'pea', 'soybean', 'mustard', 'millet', 'sorghum', 'ragi', 'tea', 'coffee', 'pepper', 'cardamom', 'ginger', 'garlic', 'papaya', 'guava', 'lemon', 'orange', 'grape', 'pomegranate', 'watermelon', 'cassava', 'arecanut', 'cashew', 'rubber', 'sunflower', 'sesame', 'cowpea', 'capsicum', 'carrot', 'radish', 'spinach', 'coriander', 'drumstick', 'jackfruit']);
+// Intents that are about this farm's live state; a question naming another
+// crop cannot be about them, so it goes to the farmer Q&A records instead.
+const FARM_INTENTS = new Set(['should_irrigate', 'why_decision', 'what_if', 'farm_status', 'weather', 'energy_status', 'crop_needs', 'disease_help', 'impact']);
+const KB_SOURCE_KEY = { agriqa: 'dsAgriqa', farmerchat: 'dsFarmerchat', crop: 'dsCrop' };
 
 export class Agent {
-  constructor(farm, { getImpact }) {
+  constructor(farm, { getImpact, knowledge = null }) {
     this.farm = farm;
     this.getImpact = getImpact;
+    this.knowledge = knowledge;
     this.clf = new IntentClassifier(INTENTS);
     this.pending = null;
     this.lastLang = 'en';
@@ -66,7 +74,9 @@ export class Agent {
       if (words.some((w) => YES.has(w))) return this.act('confirm', { langPref: lang });
       if (words.some((w) => NO.has(w))) return this.act('cancel', { langPref: lang });
     }
-    const { intent, confidence } = this.clf.classify(text);
+    let { intent, confidence } = this.clf.classify(text);
+    const otherCrop = tokenize(toSearchText(text)).some((t) => OTHER_CROPS.has(t));
+    if (otherCrop && FARM_INTENTS.has(intent) && this.knowledge) intent = 'farm_knowledge';
     const ctx = { text, lang, intent, confidence, tools: [], sources: [] };
     const handler = this[`on_${intent}`] || this.on_other;
     const out = await handler.call(this, ctx);
@@ -113,12 +123,23 @@ export class Agent {
     };
   }
 
-  on_about({ lang }) {
+  async on_about(ctx) {
+    const { lang } = ctx;
+    let n = L(lang, 'thousands of', 'ஆயிரக்கணக்கான');
+    if (this.knowledge) {
+      await this.tool(ctx, 'kb_manifest', () => this.knowledge.load());
+      n = f0(this.knowledge.m.docs);
+    }
+    const out = this.aboutText(lang);
+    return { ...out, text: out.text.replace('__N__', n) };
+  }
+
+  aboutText(lang) {
     return {
       text: L(
         lang,
-        'AgriSage is the decision layer between the farmer and the farm:\n• A **digital twin** of this farm (soil water, solar, battery, pump) updated from sensors.\n• An **optimizer** that re-plans every hour: when to irrigate and which energy to use, keeping the crop out of water stress at the lowest cost.\n• This **assistant** only explains. Every number comes from the twin or optimizer, never guessed.\nIt runs fully in the browser, with no cloud AI and no API keys. The ESP32 + relay plug into the same MQTT topics you see in the log.',
-        'AgriSage என்பது விவசாயிக்கும் பண்ணைக்கும் இடையிலான முடிவெடுக்கும் அடுக்கு:\n• இந்தப் பண்ணையின் **டிஜிட்டல் இரட்டை** (மண் நீர், சோலார், பேட்டரி, மோட்டார்), சென்சார்களால் புதுப்பிக்கப்படுகிறது.\n• ஒவ்வொரு மணி நேரமும் திட்டமிடும் **optimizer**: எப்போது பாய்ச்ச வேண்டும், எந்த மின்சாரத்தைப் பயன்படுத்த வேண்டும் என்று, பயிருக்கு நீர் அழுத்தம் இல்லாமல் குறைந்த செலவில்.\n• இந்த **உதவியாளர்** விளக்கம் மட்டுமே தரும்; ஒவ்வொரு எண்ணும் twin அல்லது optimizer-இலிருந்து வருகிறது, ஊகம் இல்லை.\nஇது முழுவதும் browser-இலேயே இயங்குகிறது: cloud AI இல்லை, API key இல்லை. ESP32 + relay, log-இல் நீங்கள் பார்க்கும் அதே MQTT topics-ஐப் பயன்படுத்தும்.',
+        'AgriSage is the decision layer between the farmer and the farm:\n• A **digital twin** of this farm (soil water, solar, battery, pump) updated from sensors.\n• An **optimizer** that re-plans every hour: when to irrigate and which energy to use, keeping the crop out of water stress at the lowest cost.\n• This **assistant** only explains. Every number comes from the twin or optimizer, never guessed.\n• For general farming questions it searches __N__ farmer Q&A records from three public datasets (FarmerChat by Digital Green, agriculture-qa, CROP) and quotes the closest ones with their source.\nIt runs fully in the browser, with no cloud AI and no API keys. The ESP32 + relay plug into the same MQTT topics you see in the log.',
+        'AgriSage என்பது விவசாயிக்கும் பண்ணைக்கும் இடையிலான முடிவெடுக்கும் அடுக்கு:\n• இந்தப் பண்ணையின் **டிஜிட்டல் இரட்டை** (மண் நீர், சோலார், பேட்டரி, மோட்டார்), சென்சார்களால் புதுப்பிக்கப்படுகிறது.\n• ஒவ்வொரு மணி நேரமும் திட்டமிடும் **optimizer**: எப்போது பாய்ச்ச வேண்டும், எந்த மின்சாரத்தைப் பயன்படுத்த வேண்டும் என்று, பயிருக்கு நீர் அழுத்தம் இல்லாமல் குறைந்த செலவில்.\n• இந்த **உதவியாளர்** விளக்கம் மட்டுமே தரும்; ஒவ்வொரு எண்ணும் twin அல்லது optimizer-இலிருந்து வருகிறது, ஊகம் இல்லை.\n• பொதுவான விவசாயக் கேள்விகளுக்கு, மூன்று பொது தரவுத் தொகுப்புகளில் (Digital Green-இன் FarmerChat, agriculture-qa, CROP) உள்ள __N__ விவசாயி கேள்வி-பதில் பதிவுகளைத் தேடி, மிக நெருக்கமானவற்றை ஆதாரத்துடன் காட்டும்.\nஇது முழுவதும் browser-இலேயே இயங்குகிறது: cloud AI இல்லை, API key இல்லை. ESP32 + relay, log-இல் நீங்கள் பார்க்கும் அதே MQTT topics-ஐப் பயன்படுத்தும்.',
       ),
       suggestions: suggest(lang, ['irrigate', 'why', 'impact']),
     };
@@ -430,10 +451,12 @@ export class Agent {
     };
   }
 
-  on_disease_help(ctx) {
+  async on_disease_help(ctx) {
     const { lang, text: q } = ctx;
-    const matches = this.tool(ctx, 'search_kb', () => matchDisease(q));
+    const matches = this.tool(ctx, 'match_symptoms', () => matchDisease(q));
     if (!matches.length) {
+      const fromRecords = await this.knowledgeAnswer(ctx);
+      if (fromRecords) return fromRecords;
       ctx.sources.push('tnauIndex');
       return {
         text: L(lang, 'Tell me what you see so I can narrow it down: spots (colour, rings?), curling leaves, yellowing, wilting, or rot on fruit? A photo for your agriculture officer helps too.', 'நீங்கள் பார்ப்பதைச் சொல்லுங்கள்: புள்ளிகள் (என்ன நிறம், வளையங்கள் உள்ளனவா?), இலைச் சுருள், மஞ்சள் நிறம், வாடல், அல்லது பழ அழுகல்? வேளாண் அலுவலருக்கு ஒரு புகைப்படமும் உதவும்.'),
@@ -489,9 +512,42 @@ export class Agent {
     };
   }
 
-  on_other({ lang }) {
+  // Search the farmer Q&A records (three public datasets). Returns null when
+  // nothing matches closely enough.
+  async knowledgeAnswer(ctx) {
+    if (!this.knowledge) return null;
+    const { lang, text: q } = ctx;
+    const { hits } = await this.tool(ctx, 'search_kb', () => this.knowledge.search(q, { k: 2, farmCrop: FARM_CROP, lang }));
+    if (!hits.length) return null;
+    for (const h of hits) ctx.sources.push(KB_SOURCE_KEY[h.source.id]);
+    const records = hits.map((h) => ({ q: h.q, a: h.a, source: h.source, place: h.place, month: h.month, crop: h.crop }));
+    const text = L(
+      lang,
+      '**From farmer Q&A records:** the closest matches to your question. AgriSage has not checked these, so confirm with your agriculture officer or KVK before acting. Chemical doses are removed on purpose.',
+      '**விவசாயிகள் கேள்வி-பதில் பதிவுகளிலிருந்து:** உங்கள் கேள்விக்கு மிக நெருக்கமானவை. இவற்றை AgriSage சரிபார்க்கவில்லை; செயல்படும் முன் வேளாண் அலுவலர் அல்லது KVK-யிடம் உறுதி செய்யவும். மருந்து அளவுகள் வேண்டுமென்றே நீக்கப்பட்டுள்ளன. பதிவுகள் ஆங்கிலத்தில் உள்ளன.',
+    );
+    return { text, records, suggestions: suggest(lang, ['irrigate', 'disease', 'about']) };
+  }
+
+  async on_farm_knowledge(ctx) {
+    const out = await this.knowledgeAnswer(ctx);
+    if (out) return out;
+    const { lang } = ctx;
     return {
-      text: L(lang, 'I can only help with this farm: irrigation, soil and weather, solar and pump, crop water needs, and tomato disease symptoms. Try one of these:', 'இந்தப் பண்ணை பற்றி மட்டுமே உதவ முடியும்: நீர்ப்பாசனம், மண் & வானிலை, சோலார் & மோட்டார், பயிரின் நீர் தேவை, தக்காளி நோய் அறிகுறிகள். இவற்றில் ஒன்றைக் கேளுங்கள்:'),
+      text: L(lang, 'I couldn’t find a close match in the farmer Q&A records. Try naming the crop and the problem, for example “whitefly control in chilli” or “seed rate for paddy”.', 'விவசாயிகள் கேள்வி-பதில் பதிவுகளில் நெருக்கமான பதில் கிடைக்கவில்லை. பயிரையும் பிரச்சனையையும் சேர்த்துக் கேளுங்கள்; உதாரணமாக “மிளகாயில் வெள்ளை ஈ கட்டுப்பாடு” அல்லது “நெல் விதை அளவு”.'),
+      suggestions: suggest(lang, ['irrigate', 'disease', 'status']),
+    };
+  }
+
+  async on_other(ctx) {
+    const out = await this.knowledgeAnswer(ctx);
+    if (out) return out;
+    return this.fallback(ctx);
+  }
+
+  fallback({ lang }) {
+    return {
+      text: L(lang, 'I couldn’t match that to this farm or to the farmer Q&A records. I can help with irrigation, soil and weather, solar and pump, crop water needs, crop diseases and general farming questions. Try one of these:', 'இதை இந்தப் பண்ணையுடனோ விவசாயிகள் கேள்வி-பதில் பதிவுகளுடனோ பொருத்த முடியவில்லை. நீர்ப்பாசனம், மண் & வானிலை, சோலார் & மோட்டார், பயிரின் நீர் தேவை, பயிர் நோய்கள், பொதுவான விவசாயக் கேள்விகள் பற்றி உதவ முடியும். இவற்றில் ஒன்றைக் கேளுங்கள்:'),
       suggestions: suggest(lang, ['irrigate', 'energy', 'disease', 'impact']),
     };
   }

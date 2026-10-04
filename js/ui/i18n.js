@@ -29,6 +29,8 @@ export const STR = {
     noMic: 'Voice input is not available in this browser',
     tools: 'tools',
     sources: 'sources',
+    recQ: 'Similar question',
+    doseRemoved: 'dose removed: ask your officer',
     thinking: 'Checking the farm…',
     verdict: {
       irrigate_later: (s, e) => `Irrigate ${s}–${e}`,
@@ -156,6 +158,8 @@ export const STR = {
     noMic: 'இந்த browser-இல் குரல் உள்ளீடு இல்லை',
     tools: 'கருவிகள்',
     sources: 'ஆதாரங்கள்',
+    recQ: 'ஒத்த கேள்வி',
+    doseRemoved: 'அளவு: அலுவலரிடம் கேளுங்கள்',
     thinking: 'பண்ணையைச் சரிபார்க்கிறேன்…',
     verdict: {
       irrigate_later: (s, e) => `${s}–${e} பாய்ச்சவும்`,

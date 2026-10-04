@@ -2,3 +2,6 @@
 .impeccable/
 .DS_Store
 node_modules/
+
+# Downloaded datasets (CLAUDE.md rule 0): only the curated subsets in data/kb/ are published
+data/raw/

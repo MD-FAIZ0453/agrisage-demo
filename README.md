@@ -2,7 +2,7 @@
 
 A browser demo of AgriSage for the Schneider Electric Yuva Yodha Energy Tech 2026 hackathon (Challenge 1: Sustainable Agriculture). A simulated tomato farm in Krishnagiri decides every hour **when to irrigate and which energy to use**, and a Tamil/English assistant explains the decision and runs the pump on the farmer's confirmation.
 
-**Live demo: https://syed0299.github.io/agrisage-demo/** (Tamil: add `?lang=ta`)
+**Live demo: https://md-faiz0453.github.io/agrisage-demo/** (Tamil: add `?lang=ta`)
 
 Everything runs in the browser: no server, no cloud AI, no API keys, no dependencies.
 
@@ -18,7 +18,7 @@ Then open http://localhost:5173. Use `?lang=ta` to open in Tamil. (`serve.py` is
 npm test
 ```
 
-The tests use Node's built-in test runner (Node 20+): twin physics, the three optimizer cases from PROMPTS.md Phase 4, pump safety rules, the MQTT contract, classifier accuracy and season impact.
+The tests use Node's built-in test runner (Node 20+): twin physics, the three optimizer cases from PROMPTS.md Phase 4, pump safety rules, the MQTT contract, classifier accuracy, season impact, and the farmer Q&A search (on-crop results, doses removed, off-topic rejected).
 
 ## What judges can do
 
@@ -40,9 +40,28 @@ The tests use Node's built-in test runner (Node 20+): twin physics, the three op
 | `js/farm.js` | Live farm: sensors on the ARCHITECTURE.md MQTT topics, pump commands with confirmation, max runtime and dry-run cutoff |
 | `js/season.js` | 135-day season comparison: 3 policies × 2 energy setups × 5 weather seasons |
 | `js/agent/` | Offline intent classifier (char n-gram TF-IDF), knowledge base with sources, Tamil/English templates |
+| `js/kb/`, `data/kb/`, `tools/build_kb.py` | Farmer Q&A search (BM25 over a static sharded index) built from three public datasets |
 | `js/ui/`, `css/` | Interface: chat, decision banner, Day Strip chart, readings, command path, impact and sources tabs |
 
 The assistant never computes or decides: every number comes from the twin, the optimizer or the season simulation through tool calls, and each answer lists the tools and sources it used.
+
+## Farmer Q&A datasets in the chatbot
+
+General farming questions ("whitefly control in chilli", "நெல்லுக்கு விதை அளவு") are answered by quoting the closest records from three public datasets, searched in the browser:
+
+| Dataset | Licence | Records used |
+|---|---|---|
+| [FarmerChat Q&A (Large)](https://huggingface.co/datasets/DigiGreen/farmerchat-queries-large), Digital Green | CC-BY-4.0 | India only, English or Tamil text |
+| [agriculture-qa](https://huggingface.co/datasets/talhakk/agriculture-qa), talhakk | Apache-2.0 | all usable rows |
+| [CROP dataset](https://huggingface.co/datasets/AI4Agr/CROP-dataset), AI4Agr | CC-BY-NC-4.0 | rice and corn practical dialogues (English) |
+
+`tools/build_kb.py` turns the raw downloads (in `data/raw/`, gitignored) into a sharded search index in `data/kb/`. Along the way it removes greetings, price, contact and weather questions, phone numbers, e-mails, links, emoji, answers with no content, and duplicate questions, and **replaces every dose with "ask your agriculture officer"**. Exact counts are in `data/kb/manifest.json` and on the Sources tab. FarmerChat answers are AI-generated and none of the records are checked by AgriSage, which the chat says every time. CROP is non-commercial: fine for this demo, not for a commercial product.
+
+To rebuild after downloading the datasets:
+
+```bash
+uv run --no-project --with pyarrow python tools/build_kb.py
+```
 
 ## Honest limits (read before presenting)
 

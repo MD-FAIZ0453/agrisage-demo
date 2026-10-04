@@ -85,6 +85,17 @@ export const INTENTS = {
     'இலையில் பழுப்பு புள்ளிகள் உள்ளன', 'இலைகள் சுருண்டு போகின்றன', 'இலைகள் மஞ்சளாகின்றன', 'செடி வாடுகிறது',
     'பழத்தின் அடியில் கருப்பு அழுகல்', 'இது என்ன நோய்',
   ],
+  farm_knowledge: [
+    'which fertilizer for chilli', 'fertilizer schedule for brinjal', 'best rice variety for tamil nadu',
+    'how to control fruit borer in tomato', 'whitefly control in chilli', 'how to control thrips', 'seed rate for paddy',
+    'spacing for okra', 'how to grow onion', 'sowing time for groundnut', 'how to make vermicompost',
+    'neem oil spray for pests', 'organic farming tips', 'stem borer in rice', 'fall armyworm in maize',
+    'mealybug control', 'how to increase cotton yield', 'weed control in sugarcane', 'pm kisan scheme',
+    'how to do soil testing', 'banana bunch care', 'how to grow coconut seedlings', 'mushroom cultivation',
+    'milagai ku enna uram', 'nel ragam enna nalladhu', 'kaai puzhu control', 'vendai sagupadi eppadi', 'iyarkai uram eppadi',
+    'மிளகாய்க்கு என்ன உரம் போட வேண்டும்', 'நெல் ரகம் எது சிறந்தது', 'காய்ப்புழு கட்டுப்பாடு எப்படி',
+    'வெண்டை சாகுபடி எப்படி', 'இயற்கை உரம் தயாரிப்பது எப்படி', 'தென்னை மரத்துக்கு என்ன உரம்',
+  ],
   impact: [
     'how much water did we save', 'what is the impact', 'savings this season', 'compare with normal irrigation',
     'how much energy saved', 'co2 reduction', 'show season results', 'benefit compared to farmer practice',
@@ -143,6 +154,11 @@ export const TEST_SET = [
   ['What growth stage is the crop in?', 'crop_needs'],
   ['If I water at night instead, what changes?', 'what_if'],
   ['is the field too dry', 'farm_status'],
+  // Third batch: general farming questions answered from the dataset records.
+  ['what fertilizer should I give to brinjal', 'farm_knowledge'],
+  ['how to control stem borer in paddy', 'farm_knowledge'],
+  ['vendaikku enna marundhu adikkanum', 'farm_knowledge'],
+  ['நெல்லுக்கு விதை அளவு எவ்வளவு', 'farm_knowledge'],
 ];
 
 // Out-of-domain questions that must fall back to "other".
