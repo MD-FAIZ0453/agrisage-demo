@@ -13,12 +13,13 @@ Done
 - UI: chat, decision banner, Day Strip chart, readings, command path, MQTT log, Season impact and Sources tabs; phone layout; validated chart palette.
 - 27 tests passing (`npm test`).
 - Design: two finish-review rounds; every material fix applied (pump stops at target, composer in first viewport, moisture lane with "if skipped" line, plan label tied to chat answers, next-day state, mobile layout). DESIGN.md records the design system.
+- Published 2026-10-04: repo https://github.com/syed0299/agrisage-demo, live at https://syed0299.github.io/agrisage-demo/ (GitHub Pages, branch main).
 - Flagged placeholder: pump hard runtime cap 240 min (UNVERIFIED; CLAUDE.md rule 5 requires a cap but gives no value).
 
 Next
 - Team approval to download NASA POWER hourly weather for Krishnagiri, then rerun the season comparison on real weather.
 - Replace UNVERIFIED parameters (Sources tab): pump nameplate, PV/battery sizes, TANGEDCO supply hours, diesel price, cost of supply, farmer baseline schedule.
-- Publish to GitHub Pages and add the link to the PPT.
+- Add the live link to the PPT: https://syed0299.github.io/agrisage-demo/
 
 Open questions
 - Keep browser voice input (uses an online speech service) or hide it until on-device Tamil ASR exists?

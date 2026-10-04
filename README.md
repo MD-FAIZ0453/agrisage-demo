@@ -2,6 +2,8 @@
 
 A browser demo of AgriSage for the Schneider Electric Yuva Yodha Energy Tech 2026 hackathon (Challenge 1: Sustainable Agriculture). A simulated tomato farm in Krishnagiri decides every hour **when to irrigate and which energy to use**, and a Tamil/English assistant explains the decision and runs the pump on the farmer's confirmation.
 
+**Live demo: https://syed0299.github.io/agrisage-demo/** (Tamil: add `?lang=ta`)
+
 Everything runs in the browser: no server, no cloud AI, no API keys, no dependencies.
 
 ## Run it
