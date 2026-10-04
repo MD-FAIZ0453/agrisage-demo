@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en" data-lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AgriSage Live Demo</title>
+  <meta name="description" content="AgriSage live demo: a simulated Tamil Nadu tomato farm where a digital twin and optimizer decide when to irrigate and which energy to use, explained by a Tamil and English assistant.">
+  <meta name="theme-color" content="#07110b">
+  <meta property="og:title" content="AgriSage Live Demo">
+  <meta property="og:description" content="Ask a simulated tomato farm in Krishnagiri whether to irrigate, in Tamil or English, and watch it decide, run the pump on solar, and measure the impact.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" id="brand-mark"></span>
+      <span class="wordmark">Agri<span>Sage</span></span>
+    </div>
+    <div class="farm">
+      <strong data-i18n="farmCrop">Tomato · Roma · Flowering</strong>
+      <span id="farm-meta">Day 72 after transplant · Krishnagiri, TN · 0.4 ha drip</span>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button role="tab" id="tab-live" aria-controls="panel-live" aria-selected="true" data-i18n="tabLive">Live demo</button>
+      <button role="tab" id="tab-impact" aria-controls="panel-impact" aria-selected="false" tabindex="-1" data-i18n="tabImpact">Season impact</button>
+      <button role="tab" id="tab-sources" aria-controls="panel-sources" aria-selected="false" tabindex="-1" data-i18n="tabSources">Sources</button>
+    </nav>
+    <div class="seg lang" role="group" aria-label="Language / மொழி">
+      <button type="button" data-set-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-set-lang="ta" aria-pressed="false" lang="ta">தமிழ்</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="panel-live" class="tabpanel" role="tabpanel" aria-labelledby="tab-live">
+      <div class="simbar">
+        <label class="field">
+          <span data-i18n="scenario">Scenario</span>
+          <span class="select-wrap">
+            <select id="scenario"></select>
+          </span>
+        </label>
+        <div class="clock-group">
+          <span class="badge" data-i18n="simulated">Simulated farm</span>
+          <output id="clock" class="clock" aria-live="off">Day 1 · 07:30</output>
+        </div>
+        <div class="sim-controls">
+          <button type="button" class="btn icon-btn" id="play" aria-pressed="false"></button>
+          <div class="seg speed" role="group" id="speed" aria-label="Speed"></div>
+          <button type="button" class="btn icon-btn ghost" id="reset"></button>
+        </div>
+      </div>
+
+      <div class="live-grid">
+        <aside class="chat panel" aria-labelledby="chat-title">
+          <div class="chat-head">
+            <div>
+              <h2 id="chat-title" data-i18n="chatTitle">Ask AgriSage</h2>
+              <p class="sub" data-i18n="chatSub">Tamil, English or Tanglish. Every number comes from the farm twin, never guessed.</p>
+            </div>
+            <button type="button" class="btn icon-btn ghost" id="tts" aria-pressed="false"></button>
+          </div>
+          <div class="chat-log" id="chat-log" role="log" aria-live="polite" aria-relevant="additions"></div>
+          <div class="chips" id="chips" role="group" aria-label="Suggested questions"></div>
+          <form class="composer" id="composer" autocomplete="off">
+            <button type="button" class="btn icon-btn ghost" id="mic"></button>
+            <label class="sr-only" for="ask">Question</label>
+            <input id="ask" name="ask" type="text" enterkeyhint="send" maxlength="300">
+            <button type="submit" class="btn icon-btn primary" id="send"></button>
+          </form>
+        </aside>
+
+        <div class="console">
+          <section class="decision panel" id="decision" aria-live="polite"></section>
+
+          <section class="strip panel" aria-labelledby="strip-title">
+            <div class="panel-head">
+              <h2 id="strip-title" data-i18n="stripTitle">24-hour plan: water and sun</h2>
+              <ul class="legend" id="strip-legend"></ul>
+            </div>
+            <div class="strip-plot" id="strip-plot">
+              <svg id="strip" role="img" aria-labelledby="strip-title" preserveAspectRatio="none"></svg>
+              <div class="tip" id="strip-tip" hidden></div>
+            </div>
+            <details class="table-view">
+              <summary data-i18n="tableView">Hourly table</summary>
+              <div class="table-scroll"><table id="strip-table"></table></div>
+            </details>
+          </section>
+
+          <section class="readings panel" id="readings" aria-label="Readings"></section>
+
+          <div class="ops">
+            <section class="path panel" aria-labelledby="path-title">
+              <div class="panel-head">
+                <div>
+                  <h2 id="path-title" data-i18n="pathTitle">Command path</h2>
+                  <p class="sub" data-i18n="pathSub">Same MQTT topics the ESP32 will use. Hardware is simulated.</p>
+                </div>
+              </div>
+              <ol class="chain" id="chain"></ol>
+              <div class="safety">
+                <p data-i18n="safety">Safety rules run on the ESP32: farmer confirmation, a hard max runtime, and a dry-run cutoff.</p>
+                <label class="switch">
+                  <input type="checkbox" id="dry-well">
+                  <span class="track" aria-hidden="true"></span>
+                  <span data-i18n="dryWell">Simulate a dry well</span>
+                </label>
+              </div>
+            </section>
+            <section class="log panel" aria-labelledby="log-title">
+              <div class="panel-head">
+                <h2 id="log-title" data-i18n="logTitle">MQTT traffic</h2>
+                <code class="topic-root">farm/kgi-001/#</code>
+              </div>
+              <ol class="mqtt" id="mqtt" aria-live="off"></ol>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="panel-impact" class="tabpanel" role="tabpanel" aria-labelledby="tab-impact" hidden></section>
+    <section id="panel-sources" class="tabpanel" role="tabpanel" aria-labelledby="tab-sources" hidden></section>
+  </main>
+
+  <footer class="foot">
+    <p data-i18n="footer">Simulated farm with synthetic weather. Runs entirely in your browser: no cloud AI, no API keys. Voice input uses your browser’s speech service.</p>
+    <p class="team" data-i18n="team">Yuva Yodha Energy Tech 2026 · Sustainable Agriculture</p>
+  </footer>
+</body>
+</html>

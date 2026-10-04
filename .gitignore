@@ -1,0 +1,4 @@
+# Design-process files: development only, never served by GitHub Pages
+.impeccable/
+.DS_Store
+node_modules/
